@@ -1,0 +1,32 @@
+{
+  "name": "kiro-code-quality-guardian",
+  "version": "1.0.0",
+  "description": "Proactive code quality enforcement system for KIRO IDE",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "kiro",
+    "code-quality",
+    "agent-hooks",
+    "real-time"
+  ],
+  "author": "KIRO Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.19.14",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.9.2",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@types/ws": "^8.5.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "@typescript-eslint/typescript-estree": "^8.43.0",
+    "ws": "^8.14.0"
+  }
+}

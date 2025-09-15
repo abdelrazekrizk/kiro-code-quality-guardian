@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIRO Code Quality Guardian - Real-Time Feedback Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background-color: #0e7a0d;
+            color: white;
+        }
+        
+        .status.disconnected {
+            background-color: #a80000;
+            color: white;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #0078d4;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #106ebe;
+        }
+        
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        
+        .feedback-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .panel h3 {
+            margin-top: 0;
+            color: #569cd6;
+        }
+        
+        .notification {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 4px solid;
+        }
+        
+        .notification.critical {
+            background-color: #5a1d1d;
+            border-left-color: #f14c4c;
+        }
+        
+        .notification.error {
+            background-color: #5a1d1d;
+            border-left-color: #f14c4c;
+        }
+        
+        .notification.warning {
+            background-color: #5a5a1d;
+            border-left-color: #ffcc02;
+        }
+        
+        .notification.info {
+            background-color: #1d3557;
+            border-left-color: #007acc;
+        }
+        
+        .violation {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #2d2d30;
+            border-radius: 3px;
+        }
+        
+        .violation-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .violation-location {
+            font-size: 12px;
+            color: #858585;
+        }
+        
+        .quick-fix {
+            margin: 5px 0;
+            padding: 8px;
+            background-color: #1e3a8a;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .quick-fix:hover {
+            background-color: #1e40af;
+        }
+        
+        .trend {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #2d2d30;
+            border-radius: 3px;
+        }
+        
+        .trend.improving {
+            border-left: 3px solid #16a34a;
+        }
+        
+        .trend.declining {
+            border-left: 3px solid #dc2626;
+        }
+        
+        .trend.stable {
+            border-left: 3px solid #6b7280;
+        }
+        
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .message {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        
+        .message.sent {
+            color: #4ec9b0;
+        }
+        
+        .message.received {
+            color: #dcdcaa;
+        }
+        
+        .message.error {
+            color: #f14c4c;
+        }
+        
+        @media (max-width: 768px) {
+            .feedback-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ KIRO Code Quality Guardian</h1>
+            <p>Real-Time Feedback Client</p>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button id="testFeedbackBtn" onclick="requestTestFeedback()" disabled>Test Feedback</button>
+            <button id="clearBtn" onclick="clearMessages()">Clear Messages</button>
+            <input type="text" id="userIdInput" placeholder="User ID (default: demo-user-1)" style="padding: 10px; border-radius: 5px; border: 1px solid #3c3c3c; background-color: #2d2d30; color: #d4d4d4;">
+        </div>
+        
+        <div class="feedback-container">
+            <div class="panel">
+                <h3>📊 Quality Summary</h3>
+                <div id="qualitySummary">
+                    <p>No analysis data available</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>🔔 In-Editor Notifications</h3>
+                <div id="notifications">
+                    <p>No notifications</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>🚨 Code Violations</h3>
+                <div id="violations">
+                    <p>No violations detected</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>🔧 Quick Fixes</h3>
+                <div id="quickFixes">
+                    <p>No quick fixes available</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>📈 Quality Trends</h3>
+                <div id="trends">
+                    <p>No trend data available</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>💬 WebSocket Messages</h3>
+                <div id="messages" class="messages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let userId = 'demo-user-1';
+        
+        function connect() {
+            const userIdInput = document.getElementById('userIdInput');
+            if (userIdInput.value.trim()) {
+                userId = userIdInput.value.trim();
+            }
+            
+            const wsUrl = `ws://localhost:8080?userId=${encodeURIComponent(userId)}`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    updateStatus('Connected', true);
+                    addMessage(`Connected to server as ${userId}`, 'sent');
+                    
+                    // Send ping to test connection
+                    sendMessage('ping', { timestamp: Date.now() });
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        handleMessage(message);
+                    } catch (error) {
+                        addMessage(`Error parsing message: ${error.message}`, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    updateStatus('Disconnected', false);
+                    addMessage(`Connection closed: ${event.code} - ${event.reason}`, 'error');
+                };
+                
+                ws.onerror = function(error) {
+                    addMessage(`WebSocket error: ${error}`, 'error');
+                };
+                
+            } catch (error) {
+                addMessage(`Failed to connect: ${error.message}`, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendMessage(type, data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = {
+                    type: type,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(message));
+                addMessage(`Sent: ${type}`, 'sent');
+            }
+        }
+        
+        function requestTestFeedback() {
+            sendMessage('request-test-feedback', { userId: userId });
+        }
+        
+        function handleMessage(message) {
+            addMessage(`Received: ${message.type}`, 'received');
+            
+            switch (message.type) {
+                case 'connection-established':
+                    handleConnectionEstablished(message.data);
+                    break;
+                case 'quality-feedback':
+                    handleQualityFeedback(message.data);
+                    break;
+                case 'in-editor-notification':
+                    handleInEditorNotification(message.data);
+                    break;
+                case 'quality-trend':
+                    handleQualityTrend(message.data);
+                    break;
+                case 'pong':
+                    addMessage('Pong received', 'received');
+                    break;
+                default:
+                    addMessage(`Unknown message type: ${message.type}`, 'received');
+            }
+        }
+        
+        function handleConnectionEstablished(data) {
+            addMessage(`Capabilities: ${data.capabilities.join(', ')}`, 'received');
+        }
+        
+        function handleQualityFeedback(data) {
+            updateQualitySummary(data.formatted.summary);
+            updateViolations(data.analysis.violations);
+            updateQuickFixes(data.formatted.quickFixes);
+            updateTrends(data.formatted.trends);
+        }
+        
+        function handleInEditorNotification(notification) {
+            addNotification(notification);
+        }
+        
+        function handleQualityTrend(trend) {
+            addTrend(trend);
+        }
+        
+        function updateQualitySummary(summary) {
+            const summaryDiv = document.getElementById('qualitySummary');
+            summaryDiv.innerHTML = `
+                <div style="font-size: 24px; font-weight: bold; color: ${getScoreColor(summary.qualityScore)};">
+                    ${summary.qualityScore}/100
+                </div>
+                <div style="margin-top: 10px;">
+                    <div>Total Violations: ${summary.totalViolations}</div>
+                    <div style="color: #f14c4c;">Critical: ${summary.criticalCount}</div>
+                    <div style="color: #f14c4c;">Errors: ${summary.errorCount}</div>
+                    <div style="color: #ffcc02;">Warnings: ${summary.warningCount}</div>
+                    <div style="color: #007acc;">Info: ${summary.infoCount}</div>
+                </div>
+            `;
+        }
+        
+        function updateViolations(violations) {
+            const violationsDiv = document.getElementById('violations');
+            if (violations.length === 0) {
+                violationsDiv.innerHTML = '<p>No violations detected ✅</p>';
+                return;
+            }
+            
+            violationsDiv.innerHTML = violations.map(violation => `
+                <div class="violation">
+                    <div class="violation-header">
+                        <span style="color: ${getSeverityColor(violation.severity)};">
+                            ${getSeverityIcon(violation.severity)} ${violation.rule}
+                        </span>
+                    </div>
+                    <div>${violation.message}</div>
+                    <div class="violation-location">Line ${violation.line}, Column ${violation.column}</div>
+                    ${violation.suggestion ? `<div style="color: #4ec9b0; margin-top: 5px;">💡 ${violation.suggestion}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function updateQuickFixes(quickFixes) {
+            const quickFixesDiv = document.getElementById('quickFixes');
+            if (quickFixes.length === 0) {
+                quickFixesDiv.innerHTML = '<p>No quick fixes available</p>';
+                return;
+            }
+            
+            quickFixesDiv.innerHTML = quickFixes.map(fix => `
+                <div class="quick-fix" onclick="applyQuickFix('${fix.id}')">
+                    <div style="font-weight: bold;">${fix.title}</div>
+                    <div style="font-size: 12px; margin-top: 3px;">${fix.description}</div>
+                    <div style="font-size: 11px; color: #858585;">Confidence: ${Math.round(fix.confidence * 100)}%</div>
+                </div>
+            `).join('');
+        }
+        
+        function updateTrends(trends) {
+            const trendsDiv = document.getElementById('trends');
+            if (trends.length === 0) {
+                trendsDiv.innerHTML = '<p>No trend data available</p>';
+                return;
+            }
+            
+            trendsDiv.innerHTML = trends.map(trend => `
+                <div class="trend ${trend.trend}">
+                    <div>
+                        <div style="font-weight: bold;">${trend.metric}</div>
+                        <div style="font-size: 12px;">Current: ${trend.current} | Previous: ${trend.previous}</div>
+                    </div>
+                    <div style="font-weight: bold; color: ${getTrendColor(trend.trend)};">
+                        ${getTrendIcon(trend.trend)} ${trend.change > 0 ? '+' : ''}${trend.change}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function addNotification(notification) {
+            const notificationsDiv = document.getElementById('notifications');
+            if (notificationsDiv.innerHTML.includes('No notifications')) {
+                notificationsDiv.innerHTML = '';
+            }
+            
+            const notificationElement = document.createElement('div');
+            notificationElement.className = `notification ${notification.severity}`;
+            notificationElement.innerHTML = `
+                <div style="font-weight: bold;">${notification.type.toUpperCase()}</div>
+                <div>${notification.message}</div>
+                ${notification.line ? `<div style="font-size: 12px; color: #858585;">Line ${notification.line}</div>` : ''}
+            `;
+            
+            notificationsDiv.appendChild(notificationElement);
+            
+            // Auto-remove after duration if specified
+            if (notification.duration) {
+                setTimeout(() => {
+                    notificationElement.remove();
+                }, notification.duration);
+            }
+        }
+        
+        function addTrend(trend) {
+            // Add individual trend updates
+            updateTrends([trend]);
+        }
+        
+        function applyQuickFix(fixId) {
+            addMessage(`Applied quick fix: ${fixId}`, 'sent');
+            sendMessage('action-response', {
+                action: 'apply-fix',
+                fixId: fixId,
+                userId: userId
+            });
+        }
+        
+        function updateStatus(status, connected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('testFeedbackBtn').disabled = !connected;
+        }
+        
+        function addMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+        
+        function getScoreColor(score) {
+            if (score >= 80) return '#16a34a';
+            if (score >= 60) return '#ffcc02';
+            if (score >= 40) return '#f97316';
+            return '#f14c4c';
+        }
+        
+        function getSeverityColor(severity) {
+            switch (severity) {
+                case 'critical': return '#f14c4c';
+                case 'error': return '#f14c4c';
+                case 'warning': return '#ffcc02';
+                case 'info': return '#007acc';
+                default: return '#d4d4d4';
+            }
+        }
+        
+        function getSeverityIcon(severity) {
+            switch (severity) {
+                case 'critical': return '🚨';
+                case 'error': return '❌';
+                case 'warning': return '⚠️';
+                case 'info': return 'ℹ️';
+                default: return '•';
+            }
+        }
+        
+        function getTrendColor(trend) {
+            switch (trend) {
+                case 'improving': return '#16a34a';
+                case 'declining': return '#dc2626';
+                case 'stable': return '#6b7280';
+                default: return '#d4d4d4';
+            }
+        }
+        
+        function getTrendIcon(trend) {
+            switch (trend) {
+                case 'improving': return '📈';
+                case 'declining': return '📉';
+                case 'stable': return '➡️';
+                default: return '•';
+            }
+        }
+        
+        // Auto-connect on page load
+        window.onload = function() {
+            // Don't auto-connect, let user choose
+        };
+    </script>
+</body>
+</html>
